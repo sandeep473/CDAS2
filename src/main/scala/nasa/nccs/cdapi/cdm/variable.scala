@@ -1,10 +1,12 @@
 package nasa.nccs.cdapi.cdm
 
+import nasa.nccs.caching.Partitions
 import nasa.nccs.cdapi.kernels.AxisIndices
 import nasa.nccs.cdapi.tensors.{CDArray, CDByteArray, CDFloatArray, CDIndexMap}
 import nasa.nccs.esgf.process._
 import ucar.{ma2, nc2, unidata}
 import ucar.nc2.dataset.{CoordinateAxis1D, _}
+
 import scala.collection.JavaConversions._
 import scala.collection.JavaConverters._
 import scala.xml.XML
@@ -59,7 +61,7 @@ class CDSVariable( val name: String, val dataset: CDSDataset, val ncVariable: nc
   def getCoordinateAxesList = dataset.getCoordinateAxes
 }
 
-class PartitionedFragment( array: CDFloatArray, val maskOpt: Option[CDByteArray], val fragmentSpec: DataFragmentSpec, val metaData: (String, String)*  )  {
+class PartitionedFragment( partitions: Partitions, val maskOpt: Option[CDByteArray], val fragmentSpec: DataFragmentSpec, val metaData: (String, String)*  )  {
   val LOG = org.slf4j.LoggerFactory.getLogger(this.getClass)
 //  private var dataStore: Option[ CDFloatArray ] = Some( array )
 //  private val cdIndexMap: CDIndexMap = array.getIndex
@@ -74,9 +76,7 @@ class PartitionedFragment( array: CDFloatArray, val maskOpt: Option[CDByteArray]
   def getDatasetMetadata(serverContext: ServerContext): List[nc2.Attribute] = {
     fragmentSpec.getDatasetMetadata(serverContext)
   }
-  def data: CDFloatArray = array
-
-  def isMapped: Boolean = array.isMapped
+  def data: Partitions = partitions
 
 //  def data: CDFloatArray = dataStore match {
 //    case Some( array ) => array

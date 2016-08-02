@@ -1,6 +1,6 @@
 package nasa.nccs.cds2.utilities
+import java.lang.management.ManagementFactory
 import org.slf4j.Logger
-import ucar.nc2
 
 object runtime {
   def printMemoryUsage(logger: Logger) = {
@@ -11,6 +11,7 @@ object runtime {
     logger.info("** Free Memory:  " + runtime.freeMemory / mb)
     logger.info("** Total Memory: " + runtime.totalMemory / mb)
     logger.info("** Max Memory:   " + runtime.maxMemory / mb)
+    logger.info("** Num cores:   " +  runtime.availableProcessors )
     logger.info("--------------------------------- ------------ ---------------------------------")
   }
 }

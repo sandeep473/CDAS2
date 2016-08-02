@@ -1,7 +1,7 @@
 package nasa.nccs.esgf.process
 import java.util.Formatter
 
-import nasa.nccs.caching.{FileToCacheStream, FragmentPersistence}
+import nasa.nccs.caching.{FileToCacheStream, FragmentPersistence, Partitions}
 import nasa.nccs.cdapi.cdm._
 import ucar.nc2.dataset.{CoordinateAxis, CoordinateAxis1D, CoordinateAxis1DTime, VariableDS}
 import java.util.Formatter
@@ -301,19 +301,19 @@ class TargetGrid( val variable: CDSVariable, roiOpt: Option[List[DomainAxis]] ) 
 
   def createFragmentSpec() = new DataFragmentSpec( variable.name, dataset.collection, Some(this) )
 
-  def loadPartition( data_variable: CDSVariable, fragmentSpec : DataFragmentSpec, maskOpt: Option[CDByteArray], axisConf: List[OperationSpecs] ): PartitionedFragment = {
-    val partition = fragmentSpec.partitions.head
-    val sp = new SectionPartitioner(fragmentSpec.roi, partition.nPart)
-    sp.getPartition(partition.partIndex, partition.axisIndex ) match {
-      case Some(partSection) =>
-        val array = data_variable.read(partSection)
-        val cdArray: CDFloatArray = CDFloatArray.factory(array, variable.missing )
-        new PartitionedFragment( cdArray, maskOpt, fragmentSpec )
-      case None =>
-        logger.warn("No fragment generated for partition index %s out of %d parts".format(partition.partIndex, partition.nPart))
-        new PartitionedFragment()
-    }
-  }
+//  def loadPartition( data_variable: CDSVariable, fragmentSpec : DataFragmentSpec, maskOpt: Option[CDByteArray], axisConf: List[OperationSpecs] ): PartitionedFragment = {
+//    val partition = fragmentSpec.partitions.head
+//    val sp = new SectionPartitioner(fragmentSpec.roi, partition.nPart)
+//    sp.getPartition(partition.partIndex, partition.axisIndex ) match {
+//      case Some(partSection) =>
+//        val array = data_variable.read(partSection)
+//        val cdArray: CDFloatArray = CDFloatArray.factory(array, variable.missing )
+//        new PartitionedFragment( cdArray, maskOpt, fragmentSpec )
+//      case None =>
+//        logger.warn("No fragment generated for partition index %s out of %d parts".format(partition.partIndex, partition.nPart))
+//        new PartitionedFragment()
+//    }
+//  }
 
   def loadRoi( data_variable: CDSVariable, fragmentSpec: DataFragmentSpec, maskOpt: Option[CDByteArray], dataAccessMode: DataAccessMode ): PartitionedFragment =
     dataAccessMode match {
@@ -330,12 +330,10 @@ class TargetGrid( val variable: CDSVariable, roiOpt: Option[List[DomainAxis]] ) 
 
   def loadRoiViaCache( data_variable: CDSVariable, fragmentSpec: DataFragmentSpec, maskOpt: Option[CDByteArray] ): PartitionedFragment = {
     val cacheStream = new FileToCacheStream( data_variable.ncVariable, fragmentSpec.roi, maskOpt )
-    cacheStream.cacheFloatData( data_variable.missing  ) match { case ( cache_id: String, cdArray: CDFloatArray ) =>
-        val newFragSpec = fragmentSpec.reshape( cdArray.getShape )
-        val pfrag = new PartitionedFragment( cdArray, maskOpt, newFragSpec )
-        FragmentPersistence.put( newFragSpec.getKey, cache_id )
-        pfrag
-    }
+    val partitions: Partitions = cacheStream.execute( data_variable.missing  )
+    val pfrag = new PartitionedFragment( partitions, maskOpt, fragmentSpec )
+    FragmentPersistence.put( fragmentSpec.getKey, partitions.id )
+    pfrag
   }
 }
 
